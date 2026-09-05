@@ -14,8 +14,8 @@ def machine_epsilon_halving():
     """
     eps = 1.0
     while 1.0 + eps != 1.0:
-        eps = eps/2
-    return eps/2
+        eps = eps/2.0
+    return 2.0 * eps
 
 
 
@@ -40,11 +40,18 @@ def stable_quadratic_roots(a, b, c):
     D = b**2 - 4*a*c
     if a == 0 or D < 0:
         raise ValueError
-    if a*b>0:
-        roots = 2*a*c/(-b + math.sqrt(D)), 2*a*c/(-b - math.sqrt(D))
-    elif a*b<0:
-        roots = 2*a*c/(-b - math.sqrt(D)), 2*a*c/(-b + math.sqrt(D))
+    if a > 0:
+        if (-b + math.sqrt(D)) <= 10e-5:
+            roots = ((-b-math.sqrt(D))/2*a, 2*c/(-b - math.sqrt(D)))
+        elif (-b - math.sqrt(D)) <= 10e-5:
+            roots = (2*c/(-b + math.sqrt(D)), (-b+math.sqrt(D))/2*a)
+    elif a < 0:
+        if (-b + math.sqrt(D)) <= 10e-5:
+            roots = (2*c/(-b - math.sqrt(D)), (-b-math.sqrt(D))/2*a)
+        elif (-b - math.sqrt(D)) <= 10e-5:
+            roots = ((-b+math.sqrt(D))/2*a, 2*c/(-b + math.sqrt(D)))
     return roots
+
 
 
 
@@ -54,7 +61,6 @@ def naive_sum(xs):
     Accept any iterable of numbers. Do not call Python's built-in ``sum`` for
     this function; the point is to expose the behavior of the naive loop.
     """
-    xs = list(xs)
     sum = 0 
     for x in xs:
         sum += x
@@ -69,13 +75,14 @@ def pairwise_sum(xs):
     shallower rounding-error tree than left-to-right summation. Return ``0.0``
     for an empty input.
     """
-    xs = list(xs)
-    sum = []
-    while len(xs) != 1:
-        while len(sum) != 1:
-            sum.append(xs[i]+xs[i+1] for i in range(0,len(xs)-1,2))
-        xs = sum
-    return xs[0]
+    if not xs:
+        return 0.0
+    
+    if len(xs) == 1:
+        return xs[0]
+    
+    mid = len(xs) // 2
+    return pairwise_sum(xs[0: mid]) + pairwise_sum(xs[mid:])
 
 
 
@@ -87,7 +94,6 @@ def kahan_sum(xs):
     compensation term for low-order bits lost to rounding. Return ``0.0`` for
     an empty input.
     """
-    xs = list(xs)
     if not xs:
         return 0.0
     c = 0   # compensation variable
@@ -95,8 +101,8 @@ def kahan_sum(xs):
     for x in xs:
         y = x - c
         t = S + y
-        c += (t - S) - y
-        S += t
+        c = (t - S) - y
+        S = t
     return S
     
 
@@ -116,4 +122,39 @@ def decode_minifloat(bitstring):
     ``"subnormal"``, ``"normal"``, ``"inf"``, or ``"nan"``. The value is the
     decoded Python ``float``, ``math.inf``, ``-math.inf``, or ``math.nan``.
     """
-    raise NotImplementedError
+    dict = {}
+    sign = int(bitstring[0], 2)
+    exponent = int(bitstring[1:5], 2)
+    fraction = int(bitstring[5:8], 2)
+    if sign == 0:
+        dict["sign"]= 1
+    if sign == 1:
+        dict["sign"]= -1
+    if exponent == 0 and fraction == 0:
+        dict["kind"]= "zero"
+        if sign == 0:
+            dict["value"]= 0.0
+        if sign == 1:
+            dict["value"]= -0.0
+    elif exponent == 0 and fraction != 0:
+        dict["kind"]= "subnormal"
+        if sign == 0:
+            dict["value"]= fraction/8 * 2**-6
+        if sign == 1:
+            dict["value"]= -fraction/8 * 2**-6
+    elif 1 <= exponent <= 14:
+        dict["kind"]= "normal"
+        if sign == 0:
+            dict["value"]= (1 + fraction/8) * 2**(exponent-7)
+        if sign == 1:
+            dict["value"]= -(1 + fraction/8) * 2**(exponent-7)
+    elif exponent == 15 and fraction == 0:
+        dict["kind"]= "inf"
+        if sign == 0:
+            dict["value"]= math.inf
+        elif sign == 1:
+            dict["value"]= -math.inf
+    elif exponent == 15 and fraction != 0:
+        dict["kind"]= "nan"
+        dict["value"]= math.nan
+    return dict
