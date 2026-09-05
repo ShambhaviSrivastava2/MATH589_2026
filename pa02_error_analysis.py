@@ -15,7 +15,7 @@ def machine_epsilon_halving():
     eps = 1.0
     while 1.0 + eps != 1.0:
         eps = eps/2
-    return eps
+    return eps/2
 
 
 
@@ -37,14 +37,14 @@ def stable_quadratic_roots(a, b, c):
     negative. You may assume the nondegenerate real-root cases tested by the
     autograder do not have a zero value of the stable auxiliary quantity.
     """
-    # D = b**2 - 4*a*c
-    # if a == 0 or D < 0:
-    #     raise ValueError
-    # if a*b>0:
-    #     roots = 2*a*c/(-b + math.sqrt(D)), 2*a*c/(-b - math.sqrt(D))
-    # elif a*b<0:
-    #     roots = 2*a*c/(-b - math.sqrt(D)), 2*a*c/(-b + math.sqrt(D))
-    # return roots
+    D = b**2 - 4*a*c
+    if a == 0 or D < 0:
+        raise ValueError
+    if a*b>0:
+        roots = 2*a*c/(-b + math.sqrt(D)), 2*a*c/(-b - math.sqrt(D))
+    elif a*b<0:
+        roots = 2*a*c/(-b - math.sqrt(D)), 2*a*c/(-b + math.sqrt(D))
+    return roots
 
 
 
@@ -76,8 +76,6 @@ def pairwise_sum(xs):
             sum.append(xs[i]+xs[i+1] for i in range(0,len(xs)-1,2))
         xs = sum
     return xs[0]
-
-print(pairwise_sum([0,1,2,3,4,5,6,7,8,9]))
 
 
 
